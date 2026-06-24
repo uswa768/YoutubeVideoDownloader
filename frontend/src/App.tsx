@@ -3,6 +3,7 @@ import './App.css';
 
 function App() {
   const [url, setUrl] = useState('');
+  const [formatType, setFormatType] = useState('complete');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -22,12 +23,12 @@ function App() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, type: formatType }),
       });
 
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
-        throw new Error(data.error || 'Failed to download video');
+        throw new Error(data.error || 'Failed to download');
       }
 
       // Handle the file download blob
@@ -38,7 +39,7 @@ function App() {
       
       // Get filename from header if possible, else default
       const contentDisposition = response.headers.get('Content-Disposition');
-      let filename = 'video.mp4';
+      let filename = formatType === 'audio' ? 'download.mp3' : 'download.mp4';
       if (contentDisposition) {
         const filenameMatch = contentDisposition.match(/filename="?([^"]+)"?/);
         if (filenameMatch && filenameMatch.length >= 2) {
@@ -63,7 +64,7 @@ function App() {
     <div className="app-container">
       <header className="header">
         <h1>YT Downloader</h1>
-        <p>Save your favorite videos quickly and easily</p>
+        <p>Save your favorite media quickly and easily</p>
       </header>
 
       <main className="downloader-box">
@@ -80,6 +81,21 @@ function App() {
           />
         </div>
 
+        <div className="input-group">
+          <label htmlFor="format">Download Format</label>
+          <select 
+            id="format" 
+            className="url-input select-input"
+            value={formatType}
+            onChange={(e) => setFormatType(e.target.value)}
+            disabled={loading}
+          >
+            <option value="complete">Complete Video (Video + Audio)</option>
+            <option value="video">Video Only (No Audio)</option>
+            <option value="audio">Audio Only (MP3)</option>
+          </select>
+        </div>
+
         {error && <div className="error-message">{error}</div>}
 
         <button 
@@ -90,7 +106,7 @@ function App() {
           {loading ? (
             <><span className="loader"></span> Downloading...</>
           ) : (
-            'Download Video'
+            'Download'
           )}
         </button>
       </main>

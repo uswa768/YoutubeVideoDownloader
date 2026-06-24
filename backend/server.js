@@ -11,29 +11,43 @@ app.use(cors());
 app.use(express.json());
 
 app.post('/api/download', async (req, res) => {
-    const { url } = req.body;
+    const { url, type } = req.body; // type can be 'complete', 'audio', 'video'
     if (!url || (!url.includes('youtube.com/') && !url.includes('youtu.be/'))) {
         return res.status(400).json({ error: 'Invalid YouTube URL' });
     }
 
+    const formatType = type || 'complete';
+    let fileExtension = 'mp4';
+    let dlOptions = {
+        ffmpegLocation: ffmpeg
+    };
+
+    if (formatType === 'audio') {
+        fileExtension = 'mp3';
+        dlOptions.extractAudio = true;
+        dlOptions.audioFormat = 'mp3';
+    } else if (formatType === 'video') {
+        dlOptions.format = 'bestvideo[ext=mp4]/bestvideo';
+    } else {
+        // complete
+        dlOptions.format = 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best';
+    }
+
     // Create a temporary file path
-    const tempFileName = `video_${uuidv4()}.mp4`;
+    const tempFileName = `download_${uuidv4()}.${fileExtension}`;
     const tempFilePath = path.join(__dirname, tempFileName);
+    dlOptions.output = tempFilePath;
 
     try {
-        console.log(`Starting high-quality download for: ${url}`);
+        console.log(`Starting ${formatType} download for: ${url}`);
         
-        // This will download the best video and audio, and merge them using ffmpeg
-        await youtubedl(url, {
-            format: 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',
-            output: tempFilePath,
-            ffmpegLocation: ffmpeg
-        });
+        // Execute yt-dlp
+        await youtubedl(url, dlOptions);
 
         console.log(`Download complete, sending file...`);
 
         // Send the file to the client
-        res.download(tempFilePath, 'video.mp4', (err) => {
+        res.download(tempFilePath, `youtube_download.${fileExtension}`, (err) => {
             if (err) {
                 console.error('Error sending file:', err);
             }
